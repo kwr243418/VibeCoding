@@ -1,14 +1,3 @@
-# 작성: 2026-09-29 23:44
-# 가상환경 (requirements.txt로 다시 만들 수 있음)
-.venv/
-
-# 파이썬 캐시
-__pycache__/
-*.pyc
-
-# 실행 로그
-error.log
-server.log
-
-# macOS 파일
+# 작성: 2026-09-29 23:55
+# macOS 파일 (각 프로젝트 폴더의 .gitignore는 그 폴더 안에만 적용됨)
 .DS_Store
