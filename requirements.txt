@@ -1,0 +1,4 @@
+# 작성: 2026-09-29 23:44
+# 웹·데스크톱 버전을 모두 실행할 수 있도록 두 버전의 패키지를 한 번에 설치 (루트 .venv용)
+-r desktop_version/requirements.txt
+-r web_version/requirements.txt

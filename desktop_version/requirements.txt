@@ -1,0 +1,9 @@
+# 작성: 2026-09-29 23:44
+# 데스크톱 버전(PySide6) 실행에 필요한 패키지
+# scikit-learn은 mnist_mlp.joblib을 학습한 버전과 같아야 모델을 안전하게 불러올 수 있어 버전을 고정한다
+scikit-learn==1.9.1
+numpy>=2.0
+scipy>=1.13
+pillow>=10.0
+joblib>=1.4
+PySide6>=6.7

@@ -1,0 +1,211 @@
+<!-- 작성: 2026-09-29 23:26 -->
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>손글씨 숫자 인식</title>
+  <style>
+    :root {
+      --bg: #f4f4f1;
+      --panel: #ffffff;
+      --text: #1d1d1b;
+      --muted: #77766f;
+      --line: #e3e2dc;
+      --bar: #d9d8d1;
+      --accent: #2f6fdb;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #161615;
+        --panel: #22221f;
+        --text: #eeede8;
+        --muted: #9a998f;
+        --line: #34332f;
+        --bar: #3a3935;
+        --accent: #6b9cf0;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    }
+    main {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 32px;
+      padding: 28px;
+      margin: 16px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+    }
+    h1 { font-size: 18px; margin: 0 0 14px; }
+    /* 캔버스는 실제 픽셀 크기(280x280) 그대로 표시해 서버 전처리와 맞춘다 */
+    canvas {
+      display: block;
+      width: {{ canvas_size }}px;
+      height: {{ canvas_size }}px;
+      background: #000;
+      border-radius: 10px;
+      cursor: crosshair;
+      touch-action: none;
+    }
+    .buttons { display: flex; gap: 8px; margin-top: 12px; }
+    button {
+      flex: 1;
+      padding: 10px;
+      font: inherit;
+      font-size: 15px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--text);
+      cursor: pointer;
+    }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .result { width: 240px; }
+    .digit {
+      font-size: 88px;
+      font-weight: 700;
+      line-height: 1;
+      text-align: center;
+      margin: 4px 0 20px;
+      font-variant-numeric: tabular-nums;
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 16px 1fr 52px;
+      align-items: center;
+      gap: 10px;
+      margin: 6px 0;
+      font-size: 14px;
+      font-variant-numeric: tabular-nums;
+    }
+    .track { height: 10px; background: var(--bar); border-radius: 5px; overflow: hidden; }
+    .fill { height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+    .pct { text-align: right; color: var(--muted); }
+    .row.top .pct { color: var(--text); font-weight: 600; }
+    .msg { min-height: 20px; margin-top: 10px; font-size: 13px; color: var(--muted); }
+  </style>
+</head>
+<body>
+<main>
+  <section>
+    <h1>숫자를 그려 보세요 (0~9)</h1>
+    <canvas id="canvas" width="{{ canvas_size }}" height="{{ canvas_size }}"></canvas>
+    <div class="buttons">
+      <button class="primary" id="predict">인식하기</button>
+      <button id="clear">지우기</button>
+    </div>
+    <div class="msg" id="msg"></div>
+  </section>
+  <section class="result">
+    <div class="digit" id="digit">?</div>
+    <div id="rows"></div>
+  </section>
+</main>
+
+<script>
+  // 캔버스와 펜 설정 (데스크톱 버전과 같은 검은 바탕, 흰색 20px 둥근 펜)
+  const canvas = document.getElementById("canvas");
+  const ctx = canvas.getContext("2d");
+  ctx.lineWidth = 20;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = "#fff";
+
+  const digitEl = document.getElementById("digit");
+  const msgEl = document.getElementById("msg");
+
+  // 0~9 확률 막대 만들기
+  const rowsEl = document.getElementById("rows");
+  const rows = [];
+  for (let i = 0; i < 10; i++) {
+    const row = document.createElement("div");
+    row.className = "row";
+    row.innerHTML = `<span>${i}</span><div class="track"><div class="fill"></div></div><span class="pct">-</span>`;
+    rowsEl.appendChild(row);
+    rows.push({ row, fill: row.querySelector(".fill"), pct: row.querySelector(".pct") });
+  }
+
+  function clearAll() {
+    // 캔버스와 결과 초기화
+    clearTimeout(timer);
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    digitEl.textContent = "?";
+    msgEl.textContent = "";
+    rows.forEach(r => { r.fill.style.width = "0"; r.pct.textContent = "-"; r.row.classList.remove("top"); });
+  }
+
+  // 마우스·터치 공통으로 그리기 (Pointer Events)
+  let last = null;
+  let timer = null;
+  const pos = e => {
+    const rect = canvas.getBoundingClientRect();
+    return [(e.clientX - rect.left) * canvas.width / rect.width,
+            (e.clientY - rect.top) * canvas.height / rect.height];
+  };
+  const line = (a, b) => {
+    ctx.beginPath();
+    ctx.moveTo(...a);
+    ctx.lineTo(...b);
+    ctx.stroke();
+  };
+  canvas.addEventListener("pointerdown", e => {
+    canvas.setPointerCapture(e.pointerId);
+    clearTimeout(timer);
+    last = pos(e);
+    line(last, last);  // 점 찍기
+  });
+  canvas.addEventListener("pointermove", e => {
+    if (!last) return;
+    const p = pos(e);
+    line(last, p);
+    last = p;
+  });
+  const endStroke = () => {
+    // 한 획이 끝나면 잠시 기다렸다가 자동 인식
+    if (!last) return;
+    last = null;
+    timer = setTimeout(predict, 400);
+  };
+  canvas.addEventListener("pointerup", endStroke);
+  canvas.addEventListener("pointercancel", endStroke);
+
+  async function predict() {
+    // 캔버스 그림을 서버로 보내 숫자 예측
+    try {
+      const res = await fetch("/predict", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: canvas.toDataURL("image/png") }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || res.statusText);
+      if (data.digit === null) return;  // 아무것도 그리지 않은 경우
+      msgEl.textContent = "";
+      digitEl.textContent = data.digit;
+      data.probs.forEach((p, i) => {
+        rows[i].fill.style.width = `${p * 100}%`;
+        rows[i].pct.textContent = `${(p * 100).toFixed(1)}%`;
+        rows[i].row.classList.toggle("top", i === data.digit);
+      });
+    } catch (err) {
+      msgEl.textContent = `인식 실패: ${err.message}`;
+    }
+  }
+
+  document.getElementById("predict").addEventListener("click", predict);
+  document.getElementById("clear").addEventListener("click", clearAll);
+  clearAll();
+</script>
+</body>
+</html>

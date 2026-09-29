@@ -1,0 +1,20 @@
+#!/bin/zsh
+# 수정: 2026-09-29 23:44 (requirements.txt로 설치)
+# 파인더에서 숫자인식.app 을 더블클릭하면 실행되는 스크립트
+
+# 앱 번들(숫자인식.app)이 들어 있는 desktop_version 폴더로 이동
+cd "$(dirname "$0")/../../.."
+
+# 가상환경은 웹/데스크톱 버전이 함께 쓰도록 상위(프로젝트 루트) 폴더에 둔다
+VENV="../.venv"
+
+# 가상환경이 없으면 새로 만들고 필요한 패키지 설치
+if [ ! -x "$VENV/bin/python" ]; then
+  # Homebrew 파이썬이 있으면 쓰고, 없으면 macOS 기본 python3 사용
+  PY=/opt/homebrew/bin/python3; [ -x "$PY" ] || PY=/usr/bin/python3
+  "$PY" -m venv "$VENV"
+  "$VENV/bin/pip" install -q -r ../requirements.txt
+fi
+
+# 데스크톱 프로그램 실행 (오류는 로그 파일에 기록)
+exec "$VENV/bin/python" digit_app.py 2> error.log
