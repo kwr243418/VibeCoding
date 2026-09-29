@@ -1,4 +1,4 @@
-<!-- 작성: 2026-09-29 23:19 / 수정: 2026-09-29 23:26 (웹 버전 구현), 2026-09-29 23:29 (Finder 실행용 앱 번들), 2026-09-29 23:40 (.command 방식으로 변경) -->
+<!-- 작성: 2026-09-29 23:19 / 수정: 2026-09-29 23:26 (웹 버전 구현), 2026-09-29 23:29 (Finder 실행용 앱 번들), 2026-09-29 23:40 (.command 방식으로 변경), 2026-09-30 00:05 (Windows .bat) -->
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this directory.
@@ -18,6 +18,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```
 
 Finder에서 `숫자인식(웹).command`를 더블클릭해도 실행된다. Terminal 창이 열리고 그 창의 foreground에서 서버가 돌며(`exec`), 서버가 응답하면 기본 브라우저로 페이지를 연다. 창을 닫거나 Ctrl+C를 누르면(SIGHUP/SIGINT) 서버가 꺼진다. 포트가 이미 쓰이는 경우 터미널 없는(tty가 `??`) 서버면 종료 후 다시 실행하고, 다른 터미널 창에서 도는 서버면 브라우저만 연다.
+
+Windows용 `숫자인식(웹).bat`는 `chcp 65001`을 쓰는 UTF-8 배치 파일이며 CRLF 줄바꿈이어야 한다(저장소 루트 `.gitattributes`가 `*.bat`을 CRLF로 체크아웃). 새로 쓰거나 고칠 때 LF로 저장하지 말 것. 이 Mac에서는 실행해 볼 수 없어 Windows 동작은 검증되지 않았다. 서버는 창에서 `app.py --open-browser`로 실행하며(창을 닫으면 종료), 브라우저 열기는 배치 파일이 아니라 `app.py`의 `open_browser_when_ready()` 스레드가 한다. 8000번이 이미 LISTENING이면 브라우저만 연다.
 
 `.app` 번들 방식은 쓰지 않는다. 서명 없는 백그라운드 앱의 런처에서 `open -a Terminal x.command`를 호출하면 macOS가 오류 없이 요청을 무시해 Terminal 창이 열리지 않았다(`open`의 종료 코드는 0).
 

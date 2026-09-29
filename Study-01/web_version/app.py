@@ -1,8 +1,13 @@
-# 작성: 2026-09-29 23:26
+# 작성: 2026-09-29 23:26 / 수정: 2026-09-30 00:05 (--open-browser 옵션)
 # 브라우저에서 그린 손글씨 숫자를 인식하는 웹 서버 (Flask)
 import base64
 import io
 import os
+import sys
+import threading
+import time
+import urllib.request
+import webbrowser
 
 import joblib
 import numpy as np
@@ -89,5 +94,19 @@ if not os.path.exists(MODEL_PATH):
 model = joblib.load(MODEL_PATH)
 
 
+def open_browser_when_ready(url: str):
+    """서버가 응답하기 시작하면 기본 브라우저로 페이지를 연다. (Windows용 .bat에서 사용)"""
+    for _ in range(100):
+        try:
+            urllib.request.urlopen(url, timeout=1)
+            webbrowser.open(url)
+            return
+        except OSError:
+            time.sleep(0.2)
+
+
 if __name__ == "__main__":
+    # --open-browser 옵션을 주면 서버가 켜진 뒤 브라우저를 자동으로 연다
+    if "--open-browser" in sys.argv:
+        threading.Thread(target=open_browser_when_ready, args=("http://127.0.0.1:8000",), daemon=True).start()
     app.run(host="127.0.0.1", port=8000, debug=False)
